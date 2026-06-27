@@ -9,15 +9,14 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
+    # No watermark needed for stateless transforms
     t_env.execute_sql("""
         CREATE TABLE rides (
             PULocationID INTEGER,
             DOLocationID INTEGER,
             trip_distance DOUBLE,
             total_amount DOUBLE,
-            tpep_pickup_datetime BIGINT,
-            event_time AS TO_TIMESTAMP_LTZ(tpep_pickup_datetime, 3),
-            WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+            tpep_pickup_datetime BIGINT
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
@@ -31,7 +30,7 @@ def main():
         CREATE TABLE zone_events (
             event_type STRING,
             zone_id INTEGER,
-            event_timestamp TIMESTAMP(3)
+            event_timestamp BIGINT
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
@@ -40,14 +39,14 @@ def main():
         )
     """)
 
-    # FlatMap via UNION: emit pickup event + dropoff event per ride
-    # ponytail: SQL UNION is the lazy flatmap—no UDF needed
+    # FlatMap via UNION ALL: emit 2 events per ride (pickup + dropoff)
+    # UNION ALL keeps all rows; UNION would deduplicate
     t_env.execute_sql("""
         INSERT INTO zone_events
-        SELECT 'pickup' AS event_type, PULocationID AS zone_id, event_time AS event_timestamp
+        SELECT 'pickup' AS event_type, PULocationID AS zone_id, tpep_pickup_datetime AS event_timestamp
         FROM rides
         UNION ALL
-        SELECT 'dropoff' AS event_type, DOLocationID AS zone_id, event_time AS event_timestamp
+        SELECT 'dropoff' AS event_type, DOLocationID AS zone_id, tpep_pickup_datetime AS event_timestamp
         FROM rides
     """).wait()
 

@@ -9,15 +9,13 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
+    # No watermark needed for stateless transforms
     t_env.execute_sql("""
         CREATE TABLE rides (
             PULocationID INTEGER,
             DOLocationID INTEGER,
             trip_distance DOUBLE,
-            total_amount DOUBLE,
-            tpep_pickup_datetime BIGINT,
-            event_time AS TO_TIMESTAMP_LTZ(tpep_pickup_datetime, 3),
-            WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+            total_amount DOUBLE
         ) WITH (
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',

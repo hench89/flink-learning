@@ -1,73 +1,82 @@
 # 02 - Transformations: Stateless Operations
 
-**Goal:** Learn map, filter, flatMap—operations that transform records without memory.
+**Goal:** Learn map, filter, flatMap—operations that process each record independently.
+
+## Background
+
+Before starting, read [Tables = Kafka Topics](../../docs/concepts.md#tables--kafka-topics)—you'll see `CREATE TABLE` in the code and should understand how it maps to Kafka.
 
 ## Concept
 
-Stateless transformations process each record independently:
-- **filter:** Keep records matching a condition
-- **map:** Transform each record 1:1
-- **flatMap:** Transform each record to 0, 1, or many output records
+Stateless transformations don't remember anything between records:
+
+| Operation | Input → Output | Use Case |
+|-----------|----------------|----------|
+| **filter** | 1 → 0 or 1 | Discard records not matching a condition |
+| **map** | 1 → 1 | Transform each record to a new structure |
+| **flatMap** | 1 → 0, 1, or many | Split one record into multiple |
+
+---
 
 ## Exercises
 
 ### 1. Filter: High-Fare Rides
 
-Only emit rides where `fare_amount > 20`.
+Only emit rides where `total_amount > 20`. The output stream will be smaller than the input.
 
 ```bash
 make submit-job JOB=exercises/02-transformations/filter_rides.py
-make kafka-consume TOPIC=high-fare-rides LINES=5
+make consumer-follow TOPIC=high-fare-rides
 ```
+
+> **What's happening:** Flink reads every ride from `rides` topic, checks if `total_amount > 20`, and only forwards matching records to `high-fare-rides`.
 
 **Solution:** [filter_rides.py](filter_rides.py)
 
+---
+
 ### 2. Map: Convert to EUR
 
-Transform the schema:
-- Convert `fare_amount` USD → EUR (×0.92)
-- Rename `PULocationID` → `pickup_zone`
+Transform each record 1:1 with a new structure:
+- Convert `total_amount` USD → EUR (×0.92)
+- Rename fields to cleaner names
 
 ```bash
 make submit-job JOB=exercises/02-transformations/map_to_eur.py
+make consumer-follow TOPIC=rides-eur
 ```
 
+> **What's happening:** Every input record produces exactly one output record. The rate stays the same, only the structure changes.
+
 **Solution:** [map_to_eur.py](map_to_eur.py)
+
+---
 
 ### 3. FlatMap: Split Events
 
 Emit TWO events per ride:
-- `{"type": "pickup", "zone": <pickup_zone>, "timestamp": <pickup_time>}`
-- `{"type": "dropoff", "zone": <dropoff_zone>, "timestamp": <dropoff_time>}`
-
-This is useful for zone-based analytics where you want to count entries/exits.
+- `{"event_type": "pickup", "zone_id": 161, ...}`
+- `{"event_type": "dropoff", "zone_id": 237, ...}`
 
 ```bash
 make submit-job JOB=exercises/02-transformations/flatmap_events.py
+make consumer-follow TOPIC=zone-events
 ```
+
+> **What's happening:** Each input ride produces 2 output events. The output rate is 2× the input. This decomposition is useful for counting entries/exits per zone (you'll do that in module 03).
 
 **Solution:** [flatmap_events.py](flatmap_events.py)
 
-## PyFlink Gotcha
-
-Type hints matter! Flink infers the output schema from your function's return type.
-
-```python
-# Bad: no type hint, Flink can't infer schema
-def transform(row):
-    return {"zone": row["PULocationID"]}
-
-# Good: explicit type hint
-def transform(row) -> dict:
-    return {"zone": row["PULocationID"]}
-```
+---
 
 ## Verify
 
+Run all three jobs (they can run simultaneously), then check each output topic:
+
 ```bash
-make kafka-consume TOPIC=high-fare-rides LINES=3
-make kafka-consume TOPIC=rides-eur LINES=3
-make kafka-consume TOPIC=zone-events LINES=6  # Should see pickup/dropoff pairs
+make consumer-follow TOPIC=high-fare-rides
+make consumer-follow TOPIC=rides-eur
+make consumer-follow TOPIC=zone-events
 ```
 
 ## Next

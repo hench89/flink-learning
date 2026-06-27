@@ -86,6 +86,10 @@ make ui                 # Open Flink Web UI
 make logs SVC=jobmanager
 ```
 
+## Concepts
+
+See [docs/concepts.md](docs/concepts.md) for background on jobs, tables, watermarks, and other Flink concepts.
+
 ## Curriculum
 
 | Module | Focus | Time |

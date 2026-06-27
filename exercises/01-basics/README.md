@@ -2,6 +2,10 @@
 
 **Goal:** Verify the stack works and understand how data flows before writing code.
 
+## Background
+
+Before starting, read [Jobs](../../docs/concepts.md#jobs) in the concepts doc—you'll see "Running Jobs" in the Flink UI and should understand what that means.
+
 ## Exercises
 
 ### 1. Start Infrastructure
