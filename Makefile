@@ -32,23 +32,23 @@ help:
 	@echo "  make checkpoints JOB_ID=<id>"
 
 build:
-	docker compose build
+	docker-compose build
 
 start:
-	docker compose up -d
+	docker-compose up -d
 	@sleep 3
 	@echo "Flink UI: http://localhost:8081"
 
 stop:
-	docker compose down
+	docker-compose down
 
 restart: stop start
 
 logs:
-	docker compose logs -f $(SVC)
+	docker-compose logs -f $(SVC)
 
 clean:
-	docker compose down -v
+	docker-compose down -v
 
 # Producer
 produce:
@@ -57,37 +57,37 @@ produce:
 # Job management
 submit-job:
 	@test -n "$(JOB)" || (echo "Usage: make submit-job JOB=exercises/02-transformations/filter_rides.py" && exit 1)
-	docker compose exec jobmanager flink run -py /opt/flink/usrlib/$(JOB) --pyFiles /opt/src
+	docker-compose exec jobmanager flink run -py /opt/flink/usrlib/$(JOB) --pyFiles /opt/src
 
 kill-job:
 	@test -n "$(JOB_ID)" || (echo "Usage: make kill-job JOB_ID=<job-id>" && exit 1)
-	docker compose exec jobmanager flink cancel $(JOB_ID)
+	docker-compose exec jobmanager flink cancel $(JOB_ID)
 
 job-status:
-	docker compose exec jobmanager flink list
+	docker-compose exec jobmanager flink list
 
 ui:
 	open http://localhost:8081 2>/dev/null || xdg-open http://localhost:8081
 
 # Kafka
 kafka-topics:
-	docker compose exec redpanda rpk topic list
+	docker-compose exec redpanda rpk topic list
 
 kafka-consume:
 	@test -n "$(TOPIC)" || (echo "Usage: make kafka-consume TOPIC=rides LINES=10" && exit 1)
-	docker compose exec redpanda rpk topic consume $(TOPIC) -n $(or $(LINES),10)
+	docker-compose exec redpanda rpk topic consume $(TOPIC) -n $(or $(LINES),10)
 
 kafka-create-topic:
 	@test -n "$(TOPIC)" || (echo "Usage: make kafka-create-topic TOPIC=my-topic" && exit 1)
-	docker compose exec redpanda rpk topic create $(TOPIC)
+	docker-compose exec redpanda rpk topic create $(TOPIC)
 
 # Database
 db-connect:
-	docker compose exec postgres psql -U postgres
+	docker-compose exec postgres psql -U postgres
 
 db-query:
 	@test -n "$(SQL)" || (echo "Usage: make db-query SQL='SELECT ...'" && exit 1)
-	docker compose exec postgres psql -U postgres -c "$(SQL)"
+	docker-compose exec postgres psql -U postgres -c "$(SQL)"
 
 # Monitoring
 metrics:
