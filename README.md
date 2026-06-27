@@ -5,30 +5,24 @@ Learn Apache Flink through progressive exercises using NYC taxi data.
 ## Prerequisites
 
 - Docker & Docker Compose
-- Python 3.12
+- Python 3.12+
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ## Quick Start
 
 ```bash
-# Clone the workshop (provides Docker infrastructure)
-git clone https://github.com/DataTalksClub/data-engineering-zoomcamp.git
-cd data-engineering-zoomcamp/07-streaming/workshop
+# Build Docker images (first time only)
+make build
 
 # Start infrastructure
-docker compose up -d
+make start
 
-# Verify services
+# Verify services are running
 docker compose ps
-```
 
-Services running:
-| Service | Port | Purpose |
-|---------|------|---------|
-| Redpanda | 9092 | Kafka-compatible broker |
-| PostgreSQL | 5432 | Result storage |
-| Flink JobManager | 8081 | Web UI + job coordination |
-| Flink TaskManager | — | Job execution |
+# Open Flink UI
+make ui
+```
 
 ## Architecture
 
@@ -39,25 +33,55 @@ Services running:
 └──────────┘    └──────────┘    └───────┘    └────────────┘
 ```
 
+| Service | Port | Purpose |
+|---------|------|---------|
+| Redpanda | 9092 | Kafka-compatible broker |
+| PostgreSQL | 5432 | Result storage |
+| Flink JobManager | 8081 | Web UI + job coordination |
+| Flink TaskManager | — | Job execution |
+
+## Running Exercises
+
+```bash
+# Terminal 1: Start producing taxi data
+make produce
+
+# Terminal 2: Submit a job
+make submit-job JOB=exercises/02-transformations/filter_rides.py
+
+# Check job status
+make job-status
+
+# View output
+make kafka-consume TOPIC=high-fare-rides LINES=5
+```
+
 ## Makefile Commands
 
 ```bash
-make start          # Start all services
-make stop           # Stop all services
-make logs           # Tail all logs
-make logs SVC=jobmanager  # Tail specific service
+# Setup
+make build              # Build Docker images (first time)
+make start              # Start all services
+make stop               # Stop all services
+make clean              # Remove containers and volumes
 
+# Jobs
 make submit-job JOB=exercises/02-transformations/filter_rides.py
-make job-status     # List running jobs
+make job-status         # List running jobs
 make kill-job JOB_ID=<id>
 
-make kafka-topics   # List Kafka topics
-make kafka-consume TOPIC=taxi-rides LINES=10
+# Data
+make produce            # Run taxi data producer
+make kafka-topics       # List Kafka topics
+make kafka-consume TOPIC=rides LINES=10
 
-make db-connect     # PostgreSQL shell
-make db-query SQL="SELECT * FROM aggregations LIMIT 5;"
+# Database
+make db-connect         # PostgreSQL shell
+make db-query SQL="SELECT * FROM hourly_revenue LIMIT 5;"
 
-make ui             # Open Flink Web UI
+# Monitoring
+make ui                 # Open Flink Web UI
+make logs SVC=jobmanager
 ```
 
 ## Curriculum
@@ -74,6 +98,6 @@ make ui             # Open Flink Web UI
 
 ## Tips
 
-- Keep `make logs SVC=jobmanager` running in a terminal to catch errors
+- Keep `make logs SVC=taskmanager` running to catch job errors
 - Use Flink UI (localhost:8081) to inspect job graphs and metrics
 - Each exercise builds on the same infrastructure—no teardown between modules
