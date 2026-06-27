@@ -9,7 +9,6 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
-    # No watermark needed for stateless transforms
     t_env.execute_sql("""
         CREATE TABLE rides (
             PULocationID INTEGER,

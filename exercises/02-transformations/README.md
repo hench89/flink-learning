@@ -20,6 +20,32 @@ Stateless transformations don't remember anything between records:
 
 ## Exercises
 
+### 0. Job Management (Warm-up)
+
+Before diving into transformations, practice the job lifecycle:
+
+```bash
+# Submit the filter job
+make submit-job JOB=exercises/02-transformations/filter_rides.py
+
+# List running jobs (note the JOB_ID)
+make job-status
+
+# Or view in Flink UI
+make ui
+```
+
+Now kill it:
+```bash
+make kill-job JOB_ID=<paste-id-here>
+
+# Or click "Cancel Job" in the Flink UI
+```
+
+> **Why this matters:** You'll submit and kill jobs many times while learning. Get comfortable with this before modifying code.
+
+---
+
 ### 1. Filter: High-Fare Rides
 
 Only emit rides where `total_amount > 20`. The output stream will be smaller than the input.
@@ -78,6 +104,14 @@ make consumer-follow TOPIC=high-fare-rides
 make consumer-follow TOPIC=rides-eur
 make consumer-follow TOPIC=zone-events
 ```
+
+## Try This (Optional)
+
+Practice modifying and resubmitting jobs. Remember to kill the old job first!
+
+1. **Filter:** Change to `total_amount > 50 AND trip_distance > 5` to find premium long-distance rides
+2. **Map:** Add a computed field `price_per_mile` (fare_eur / distance_miles)
+3. **FlatMap:** Add a third event type `ride_complete` that includes the `total_amount`
 
 ## Next
 
