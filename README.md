@@ -12,13 +12,15 @@ Learn Apache Flink through progressive exercises using NYC taxi data.
 
 ```bash
 # Build Docker images (first time only)
+# This creates a local Flink environment with PyFlink, Kafka connectors, and PostgreSQL drivers.
+# Takes 5-10 minutes on first run; subsequent builds use cache.
 make build
 
 # Start infrastructure
 make start
 
 # Verify services are running
-docker compose ps
+docker-compose ps
 
 # Open Flink UI
 make ui

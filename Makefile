@@ -77,6 +77,10 @@ kafka-consume:
 	@test -n "$(TOPIC)" || (echo "Usage: make kafka-consume TOPIC=rides LINES=10" && exit 1)
 	docker-compose exec redpanda rpk topic consume $(TOPIC) -n $(or $(LINES),10)
 
+consumer-follow:
+	@test -n "$(TOPIC)" || (echo "Usage: make consumer-follow TOPIC=rides" && exit 1)
+	docker-compose exec redpanda rpk topic consume $(TOPIC)
+
 kafka-create-topic:
 	@test -n "$(TOPIC)" || (echo "Usage: make kafka-create-topic TOPIC=my-topic" && exit 1)
 	docker-compose exec redpanda rpk topic create $(TOPIC)

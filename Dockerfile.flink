@@ -1,5 +1,15 @@
 FROM flink:2.2.0-scala_2.12-java17
 
+# PyFlink depends on pemja (Python-Java bridge) which compiles native code.
+# The base Flink image has JRE only, so we need:
+#   - openjdk-17-jdk-headless: JNI headers for pemja to link against
+#   - build-essential: C compiler (cc/gcc) to compile pemja's C extensions
+# These are only needed at build time; the resulting .so files run with just JRE.
+USER root
+RUN apt-get update && apt-get install -y openjdk-17-jdk-headless build-essential && rm -rf /var/lib/apt/lists/*
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+USER flink
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
 
 WORKDIR /opt/pyflink
