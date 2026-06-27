@@ -1,0 +1,70 @@
+-- NYC Taxi Zone lookup table for stream-table joins
+-- Run: make db-connect then \i exercises/06-joins/setup_zones_table.sql
+
+CREATE TABLE IF NOT EXISTS taxi_zones (
+    zone_id INTEGER PRIMARY KEY,
+    borough VARCHAR(50),
+    zone_name VARCHAR(100)
+);
+
+-- Sample zones (subset of NYC taxi zones)
+INSERT INTO taxi_zones (zone_id, borough, zone_name) VALUES
+(1, 'EWR', 'Newark Airport'),
+(2, 'Queens', 'Jamaica Bay'),
+(3, 'Bronx', 'Allerton/Pelham Gardens'),
+(4, 'Manhattan', 'Alphabet City'),
+(7, 'Queens', 'Astoria'),
+(12, 'Manhattan', 'Battery Park'),
+(13, 'Manhattan', 'Battery Park City'),
+(43, 'Manhattan', 'Central Park'),
+(45, 'Manhattan', 'Chinatown'),
+(48, 'Manhattan', 'Clinton East'),
+(50, 'Manhattan', 'Clinton West'),
+(68, 'Manhattan', 'East Chelsea'),
+(79, 'Manhattan', 'East Village'),
+(90, 'Manhattan', 'Flatiron'),
+(100, 'Manhattan', 'Garment District'),
+(107, 'Manhattan', 'Gramercy'),
+(113, 'Manhattan', 'Greenwich Village North'),
+(114, 'Manhattan', 'Greenwich Village South'),
+(125, 'Manhattan', 'Hudson Sq'),
+(137, 'Queens', 'Kew Gardens'),
+(140, 'Queens', 'LaGuardia Airport'),
+(142, 'Manhattan', 'Lincoln Square East'),
+(143, 'Manhattan', 'Lincoln Square West'),
+(144, 'Manhattan', 'Little Italy/NoLiTa'),
+(148, 'Manhattan', 'Lower East Side'),
+(151, 'Manhattan', 'Manhattan Valley'),
+(158, 'Manhattan', 'Meatpacking/West Village West'),
+(161, 'Manhattan', 'Midtown Center'),
+(162, 'Manhattan', 'Midtown East'),
+(163, 'Manhattan', 'Midtown North'),
+(164, 'Manhattan', 'Midtown South'),
+(166, 'Manhattan', 'Morningside Heights'),
+(170, 'Manhattan', 'Murray Hill'),
+(186, 'Manhattan', 'Penn Station/Madison Sq West'),
+(209, 'Manhattan', 'Seaport'),
+(211, 'Manhattan', 'SoHo'),
+(224, 'Manhattan', 'Stuy Town/PCV'),
+(229, 'Manhattan', 'Sutton Place/Turtle Bay North'),
+(230, 'Manhattan', 'Sutton Place/Turtle Bay South'),
+(231, 'Manhattan', 'Times Sq/Theatre District'),
+(232, 'Manhattan', 'TriBeCa/Civic Center'),
+(233, 'Manhattan', 'Two Bridges/Seward Park'),
+(234, 'Manhattan', 'UN/Turtle Bay South'),
+(236, 'Manhattan', 'Upper East Side North'),
+(237, 'Manhattan', 'Upper East Side South'),
+(238, 'Manhattan', 'Upper West Side North'),
+(239, 'Manhattan', 'Upper West Side South'),
+(243, 'Manhattan', 'Washington Heights North'),
+(244, 'Manhattan', 'Washington Heights South'),
+(246, 'Manhattan', 'West Chelsea/Hudson Yards'),
+(249, 'Manhattan', 'West Village'),
+(261, 'Manhattan', 'World Trade Center'),
+(262, 'Manhattan', 'Yorkville East'),
+(263, 'Manhattan', 'Yorkville West'),
+(264, 'Unknown', 'Unknown'),
+(265, 'Unknown', 'Unknown')
+ON CONFLICT (zone_id) DO NOTHING;
+
+SELECT COUNT(*) AS zones_loaded FROM taxi_zones;
