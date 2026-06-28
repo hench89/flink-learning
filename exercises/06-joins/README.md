@@ -4,11 +4,22 @@
 
 ## Concept
 
+### SQL Joins (Declarative)
+
 | Join Type | Use Case |
 |-----------|----------|
 | **Stream-Table** | Enrich events with static lookup data |
 | **Stream-Stream** | Correlate two event streams by key |
 | **Interval Join** | Match events within a time window |
+
+### DataStream Joins (Programmatic)
+
+| Join Type | Use Case | When to Use |
+|-----------|----------|-------------|
+| **KeyedCoProcessFunction** | Custom stateful join with buffering | Need control over emit timing, complex join logic |
+| **Broadcast State** | Enrich with small reference data | Dimension table fits in memory on every worker |
+
+Production enrichment pipelines chain multiple `KeyedCoProcessFunction` joins to combine 10+ streams. SQL joins work for simple cases; DataStream API gives full control.
 
 ## Setup
 
@@ -69,6 +80,52 @@ make db-query SQL="SELECT * FROM nearby_rides LIMIT 10;"
 ```
 
 **Solution:** [interval_join.py](interval_join.py)
+
+---
+
+### 4. KeyedCoProcessFunction: Custom Stateful Join
+
+The building block behind production enrichment pipelines. Buffer one stream's events until the other stream provides matching data.
+
+```bash
+# Start drivers topic producer (simulates driver status updates)
+uv run src/producers/drivers_producer.py
+
+make submit-job JOB=exercises/06-joins/coprocess_join.py
+```
+
+**What it does:**
+- Rides arrive keyed by `driver_id`
+- If driver info exists in state → emit enriched ride immediately
+- If not → buffer ride until driver info arrives, then flush
+
+**Why this matters:** SQL joins wait for both sides. `KeyedCoProcessFunction` lets you decide: emit immediately with partial data, buffer and wait, or drop if too old.
+
+**Solution:** [coprocess_join.py](coprocess_join.py)
+
+---
+
+### 5. Broadcast State: Reference Data Enrichment
+
+Enrich high-volume stream with small reference data that lives on every worker.
+
+```bash
+# Publish zone reference data to broadcast topic
+uv run src/producers/zones_producer.py
+
+make submit-job JOB=exercises/06-joins/broadcast_enrich.py
+```
+
+**What it does:**
+- Zone data (small) is broadcast to all workers
+- Rides (high volume) stay local — no shuffle
+- Each worker enriches rides using its local copy of zone data
+
+**When to use:** Reference data is small (<100MB), updates infrequently. Avoids expensive shuffle for every enrichment lookup.
+
+**Solution:** [broadcast_enrich.py](broadcast_enrich.py)
+
+---
 
 ## Critical Teaching: Joins Fail Silently
 
