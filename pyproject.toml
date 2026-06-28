@@ -2,10 +2,14 @@
 name = "flink-learning"
 version = "0.1.0"
 description = "Flink Learning Curriculum"
-requires-python = ">=3.12"
+requires-python = "==3.11.*"
 dependencies = [
     "kafka-python>=2.3.0",
     "pandas>=2.2.0",
     "psycopg2-binary>=2.9.11",
-    "pyarrow>=19.0.0",
+    "setuptools",
+    "apache-flink==2.2.0",
 ]
+
+[tool.uv]
+no-build-isolation-package = ["apache-beam"]

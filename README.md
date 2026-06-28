@@ -5,8 +5,25 @@ Learn Apache Flink through progressive exercises using NYC taxi data.
 ## Prerequisites
 
 - Docker & Docker Compose
-- Python 3.12+
+- Python 3.11 (not 3.12+ — apache-beam doesn't have wheels)
 - [uv](https://github.com/astral-sh/uv) package manager
+
+## Local Development Setup (Optional)
+
+If you want IDE autocomplete for PyFlink imports:
+
+```bash
+# Create venv with Python 3.11 + pip/setuptools
+uv venv --seed --python 3.11
+
+# Install flink via pip (uv can't build apache-beam)
+.venv/bin/pip install --no-build-isolation apache-flink==2.2.0
+
+# Install other deps
+.venv/bin/pip install kafka-python pandas psycopg2-binary
+```
+
+Then select `.venv` as your Python interpreter in VS Code.
 
 ## Quick Start
 
