@@ -62,7 +62,7 @@ def main():
             ON r1.PULocationID = r2.PULocationID
             AND r2.event_time BETWEEN r1.event_time AND r1.event_time + INTERVAL '5' MINUTE
             AND r1.event_time < r2.event_time
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

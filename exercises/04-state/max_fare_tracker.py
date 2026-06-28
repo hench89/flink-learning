@@ -51,7 +51,7 @@ def main():
             MAX(trip_distance) AS max_distance
         FROM rides
         GROUP BY PULocationID
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

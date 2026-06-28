@@ -55,7 +55,7 @@ def main():
             MAX(event_time) AS last_updated
         FROM rides
         GROUP BY PULocationID
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

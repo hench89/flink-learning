@@ -78,7 +78,7 @@ def main():
         JOIN dropoffs d
             ON p.trip_id = d.trip_id
             AND d.dropoff_time BETWEEN p.pickup_time AND p.pickup_time + INTERVAL '30' MINUTE
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

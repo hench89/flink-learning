@@ -50,7 +50,7 @@ def main():
             total_amount AS fare,
             event_time
         FROM rides
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

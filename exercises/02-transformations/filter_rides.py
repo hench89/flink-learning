@@ -47,7 +47,7 @@ def main():
         SELECT PULocationID, DOLocationID, trip_distance, total_amount
         FROM rides
         WHERE total_amount > 20
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

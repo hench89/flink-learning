@@ -47,7 +47,7 @@ def main():
             trip_distance AS distance_miles,
             total_amount * 0.92 AS fare_eur
         FROM rides
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

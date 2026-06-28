@@ -84,7 +84,7 @@ def main():
         GROUP BY PULocationID, window_end
     """)
 
-    stmt_set.execute().wait()
+    stmt_set.execute()
 
 if __name__ == "__main__":
     main()

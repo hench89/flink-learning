@@ -47,7 +47,7 @@ def main():
         UNION ALL
         SELECT 'dropoff' AS event_type, DOLocationID AS zone_id, tpep_pickup_datetime AS event_timestamp
         FROM rides
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

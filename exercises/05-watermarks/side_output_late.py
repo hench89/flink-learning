@@ -60,7 +60,7 @@ def main():
             TUMBLE(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' MINUTE)
         )
         GROUP BY PULocationID, window_end
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

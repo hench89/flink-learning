@@ -77,9 +77,8 @@ make produce            # Run taxi data producer
 make kafka-topics       # List Kafka topics
 make kafka-consume TOPIC=rides LINES=10
 
-# Database
-make db-connect         # PostgreSQL shell
-make db-query SQL="SELECT * FROM hourly_revenue LIMIT 5;"
+# Database (use pgcli for nicer autocomplete)
+uvx pgcli -h localhost -U postgres -d postgres  # password: postgres
 
 # Monitoring
 make ui                 # Open Flink Web UI

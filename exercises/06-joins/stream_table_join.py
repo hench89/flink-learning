@@ -79,7 +79,7 @@ def main():
             ON r.PULocationID = pz.zone_id
         LEFT JOIN taxi_zones FOR SYSTEM_TIME AS OF r.event_time AS dz
             ON r.DOLocationID = dz.zone_id
-    """).wait()
+    """)
 
 if __name__ == "__main__":
     main()

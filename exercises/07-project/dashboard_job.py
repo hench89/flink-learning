@@ -148,7 +148,7 @@ def main():
         FROM rides
     """)
 
-    stmt_set.execute().wait()
+    stmt_set.execute()
 
 if __name__ == "__main__":
     main()
