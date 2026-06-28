@@ -28,7 +28,7 @@ def main():
     """)
 
     t_env.execute_sql("""
-        CREATE TABLE hourly_revenue (
+        CREATE TABLE minute_revenue (
             zone_id INTEGER,
             window_start TIMESTAMP(3),
             window_end TIMESTAMP(3),
@@ -38,7 +38,7 @@ def main():
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/postgres',
-            'table-name' = 'hourly_revenue',
+            'table-name' = 'minute_revenue',
             'username' = 'postgres',
             'password' = 'postgres',
             'driver' = 'org.postgresql.Driver'
@@ -46,7 +46,7 @@ def main():
     """)
 
     t_env.execute_sql("""
-        INSERT INTO hourly_revenue
+        INSERT INTO minute_revenue
         SELECT
             PULocationID AS zone_id,
             window_start,
@@ -54,10 +54,9 @@ def main():
             COUNT(*) AS trip_count,
             SUM(total_amount) AS total_revenue
         FROM TABLE(
-            TUMBLE(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' HOUR)
+            TUMBLE(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' MINUTE)
         )
         GROUP BY PULocationID, window_start, window_end
-    """).wait()
-
+    """)
 if __name__ == "__main__":
     main()

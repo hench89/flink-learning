@@ -45,8 +45,8 @@ def main():
         )
     """)
 
-    # Sliding: 5-minute window, slides every 1 minute
-    # Compare row count with tumbling—sliding produces more rows
+    # Sliding: 5-minute window, slides every 10 seconds
+    # Compare row count with tumbling—sliding produces 6× more rows per minute
     t_env.execute_sql("""
         INSERT INTO rolling_avg_fare
         SELECT
@@ -56,10 +56,9 @@ def main():
             COUNT(*) AS trip_count,
             AVG(total_amount) AS avg_fare
         FROM TABLE(
-            HOP(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' MINUTE, INTERVAL '5' MINUTE)
+            HOP(TABLE rides, DESCRIPTOR(event_time), INTERVAL '10' SECOND, INTERVAL '5' MINUTE)
         )
         GROUP BY PULocationID, window_start, window_end
-    """).wait()
-
+    """)
 if __name__ == "__main__":
     main()

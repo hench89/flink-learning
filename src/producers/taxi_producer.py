@@ -16,6 +16,9 @@ ZONES = [
     243, 244, 246, 249, 261, 262, 263, 264, 265
 ]
 
+# Simulated driver pool
+DRIVERS = list(range(1001, 1051))  # 50 drivers
+
 def generate_ride():
     """Generate a random taxi ride event."""
     now = datetime.now()
@@ -23,6 +26,7 @@ def generate_ride():
     dropoff_zone = random.choice(ZONES)
 
     return {
+        "driver_id": random.choice(DRIVERS),
         "PULocationID": pickup_zone,
         "DOLocationID": dropoff_zone,
         "trip_distance": round(random.uniform(0.5, 25.0), 2),

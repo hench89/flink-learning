@@ -1,89 +1,96 @@
 # 03 - Windows: Time-Based Aggregations
 
-**Goal:** Understand tumbling, sliding, and session windows.
+**Goal:** Understand tumbling, sliding, and session windows — and why sliding costs more.
 
 ## Concept
 
-Windows group records by time for aggregation:
+| Type | Behavior | Output Rate |
+|------|----------|-------------|
+| **Tumbling** | Fixed, non-overlapping | 1 row per window |
+| **Sliding** | Fixed, overlapping | Many rows (windows overlap!) |
+| **Session** | Dynamic, gap-based | 1 row per activity burst |
 
-| Type | Behavior | Use Case |
-|------|----------|----------|
-| **Tumbling** | Fixed, non-overlapping | Hourly reports |
-| **Sliding** | Fixed, overlapping | Rolling averages |
-| **Session** | Dynamic, gap-based | User activity sessions |
+## Setup
 
-## Visual
-
-```
-Time:     |----1----|----2----|----3----|----4----|
-
-Tumbling: [   1h    ][   1h    ][   1h    ][   1h    ]
-          ^ resets   ^ resets   ^ resets
-
-Sliding:  [   1h window    ]
-              [   1h window    ]
-                  [   1h window    ]
-          ^ slides every 15min (overlap!)
-
-Session:  [  trips  ]         [  trips  ]
-          ^ until 30m gap     ^ new session after gap
+```bash
+make db-setup FILE=exercises/03-windows/setup_tables.sql
 ```
 
-## Exercises
-
-### 1. Tumbling: Hourly Revenue
-
-Total revenue per zone, resetting every hour.
+## Run
 
 ```bash
 make submit-job JOB=exercises/03-windows/tumbling_revenue.py
-make db-query SQL="SELECT * FROM hourly_revenue ORDER BY window_end DESC LIMIT 5;"
-```
-
-**Solution:** [tumbling_revenue.py](tumbling_revenue.py)
-
-### 2. Sliding: Rolling Average Fare
-
-5-minute window, sliding every 1 minute. Shows smoothed trends.
-
-```bash
 make submit-job JOB=exercises/03-windows/sliding_average.py
-make db-query SQL="SELECT * FROM rolling_avg_fare ORDER BY window_end DESC LIMIT 10;"
-```
-
-Compare row counts with tumbling—sliding produces more rows (overlapping windows).
-
-**Solution:** [sliding_average.py](sliding_average.py)
-
-### 3. Session: Driver Trip Clusters
-
-Group trips per driver until 30-minute inactivity. Reveals natural "shift" patterns.
-
-```bash
 make submit-job JOB=exercises/03-windows/session_driver.py
-make db-query SQL="SELECT * FROM driver_sessions ORDER BY session_end DESC LIMIT 5;"
 ```
-
-**Solution:** [session_driver.py](session_driver.py)
 
 ## Aha Moment
 
-Run all three on the same data stream. Compare:
-- Tumbling: Fixed number of rows per hour
-- Sliding: 4× more rows (15-min slide into 1-hr window)
-- Session: Variable rows depending on activity gaps
+Wait 1 minute, then compare row counts:
 
-## Verify
-
-```sql
--- Compare row counts
-SELECT 'tumbling' as type, COUNT(*) FROM hourly_revenue
-UNION ALL
-SELECT 'sliding', COUNT(*) FROM rolling_avg_fare
-UNION ALL
-SELECT 'session', COUNT(*) FROM driver_sessions;
+```bash
+make db-query SQL="SELECT 'tumbling' as type, COUNT(*) as rows FROM minute_revenue UNION ALL SELECT 'sliding', COUNT(*) FROM rolling_avg_fare UNION ALL SELECT 'session', COUNT(*) FROM driver_sessions;"
 ```
+
+**Sliding has 6× more rows than tumbling.** Why?
+
+### Tumbling: One row per window
+
+```
+Time:     [  minute 1  ][  minute 2  ][  minute 3  ]
+Output:        ↓             ↓             ↓
+           1 row         1 row         1 row
+```
+
+Each window closes, emits one row, done. **1 row per minute.**
+
+### Sliding: One row per slide
+
+```
+Time:     |-------- minute 1 --------|-------- minute 2 --------|
+Windows:  [=====5 min window=====]
+              [=====5 min window=====]
+                  [=====5 min window=====]
+                      [=====5 min window=====]
+                          [=====5 min window=====]
+                              [=====5 min window=====]
+          ↑    ↑    ↑    ↑    ↑    ↑
+         10s  10s  10s  10s  10s  10s  (slides every 10 seconds)
+```
+
+A new window starts every 10 seconds. Each window emits a row when it closes. **6 rows per minute.**
+
+### The cost insight
+
+The slide interval controls how many rows you produce:
+
+| Slide every... | Rows per minute |
+|----------------|-----------------|
+| 1 minute | 1 |
+| 10 seconds | 6 |
+| 1 second | 60 |
+
+Someone picks a 1-second slide "for smoother dashboards" and gets 60× more rows in their database.
+
+## Observe the Data
+
+```bash
+# Tumbling: one row per minute
+make db-query SQL="SELECT window_start, window_end FROM minute_revenue WHERE zone_id=161 ORDER BY window_start LIMIT 5;"
+
+# Sliding: one row every 10 seconds (6× more)
+make db-query SQL="SELECT window_start, window_end FROM rolling_avg_fare WHERE zone_id=161 ORDER BY window_start LIMIT 5;"
+
+# Session: closes after 10s of inactivity per driver
+make db-query SQL="SELECT * FROM driver_sessions WHERE driver_id=1001 ORDER BY session_start LIMIT 5;"
+```
+
+## Solutions
+
+- [tumbling_revenue.py](tumbling_revenue.py) — `TUMBLE(..., INTERVAL '1' MINUTE)`
+- [sliding_average.py](sliding_average.py) — `HOP(..., INTERVAL '10' SECOND, INTERVAL '5' MINUTE)`
+- [session_driver.py](session_driver.py) — `SESSION(..., INTERVAL '10' SECOND)`
 
 ## Next
 
-Proceed to [04-state](../04-state/) when aggregations need to persist across windows.
+[04-state](../04-state/) — when aggregations need to persist across windows.

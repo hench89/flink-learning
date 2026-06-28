@@ -57,7 +57,7 @@ produce:
 # Job management
 submit-job:
 	@test -n "$(JOB)" || (echo "Usage: make submit-job JOB=exercises/02-transformations/filter_rides.py" && exit 1)
-	docker-compose exec jobmanager flink run -py /opt/flink/usrlib/$(JOB) --pyFiles /opt/src
+	docker-compose exec jobmanager flink run -d -py /opt/flink/usrlib/$(JOB) --pyFiles /opt/src && echo "Job submitted"
 
 kill-job:
 	@test -n "$(JOB_ID)" || (echo "Usage: make kill-job JOB_ID=<job-id>" && exit 1)
@@ -92,6 +92,10 @@ db-connect:
 db-query:
 	@test -n "$(SQL)" || (echo "Usage: make db-query SQL='SELECT ...'" && exit 1)
 	docker-compose exec postgres psql -U postgres -c "$(SQL)"
+
+db-setup:
+	@test -n "$(FILE)" || (echo "Usage: make db-setup FILE=exercises/03-windows/setup_tables.sql" && exit 1)
+	docker-compose exec -T postgres psql -U postgres < $(FILE)
 
 # Monitoring
 metrics:

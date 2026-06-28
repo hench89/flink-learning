@@ -1,4 +1,9 @@
-"""Session window: Group trips by driver until 30-minute inactivity gap."""
+"""Session window: Group events until inactivity gap.
+
+NOTE: Session windows are tricky to demo because they need gaps in the data.
+With our continuous producer, sessions rarely close. This example uses a
+10-second gap so you can see results by pausing the producer briefly.
+"""
 
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import EnvironmentSettings, StreamTableEnvironment
@@ -9,10 +14,9 @@ def main():
     settings = EnvironmentSettings.new_instance().in_streaming_mode().build()
     t_env = StreamTableEnvironment.create(env, environment_settings=settings)
 
-    # ponytail: workshop data doesn't have driver_id, using DOLocationID as proxy
-    # Real exercise: add driver_id to producer or use VendorID
     t_env.execute_sql("""
         CREATE TABLE rides (
+            driver_id INTEGER,
             PULocationID INTEGER,
             DOLocationID INTEGER,
             trip_distance DOUBLE,
@@ -24,19 +28,19 @@ def main():
             'connector' = 'kafka',
             'properties.bootstrap.servers' = 'redpanda:29092',
             'topic' = 'rides',
-            'scan.startup.mode' = 'earliest-offset',
+            'scan.startup.mode' = 'latest-offset',
             'format' = 'json'
         )
     """)
 
     t_env.execute_sql("""
         CREATE TABLE driver_sessions (
-            dropoff_zone INTEGER,
+            driver_id INTEGER,
             session_start TIMESTAMP(3),
             session_end TIMESTAMP(3),
             trip_count BIGINT,
-            session_revenue DOUBLE,
-            PRIMARY KEY (dropoff_zone, session_start) NOT ENFORCED
+            total_revenue DOUBLE,
+            PRIMARY KEY (driver_id, session_start) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/postgres',
@@ -47,21 +51,20 @@ def main():
         )
     """)
 
-    # Session window: groups trips until 30-min gap
-    # Variable-sized windows based on activity patterns
+    # Session window: groups events until 10-second gap per driver
+    # To see sessions close: stop the producer for 15+ seconds, then restart
     t_env.execute_sql("""
         INSERT INTO driver_sessions
         SELECT
-            DOLocationID AS dropoff_zone,
+            driver_id,
             window_start AS session_start,
             window_end AS session_end,
             COUNT(*) AS trip_count,
-            SUM(total_amount) AS session_revenue
+            SUM(total_amount) AS total_revenue
         FROM TABLE(
-            SESSION(TABLE rides PARTITION BY DOLocationID, DESCRIPTOR(event_time), INTERVAL '30' MINUTE)
+            SESSION(TABLE rides PARTITION BY driver_id, DESCRIPTOR(event_time), INTERVAL '10' SECOND)
         )
-        GROUP BY DOLocationID, window_start, window_end
-    """).wait()
-
+        GROUP BY driver_id, window_start, window_end
+    """)
 if __name__ == "__main__":
     main()
