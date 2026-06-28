@@ -6,60 +6,108 @@
 
 **Windows reset. State persists.**
 
-Use state when you need:
-- Cumulative totals (all-time counts)
-- Running statistics (max ever seen)
-- Cross-window memory
+### Window vs State
 
-| State Type | Use Case |
-|------------|----------|
-| **ValueState** | Single value per key (counter, sum) |
-| **ReducingState** | Aggregate with reduce function (max, min) |
-| **ListState** | Collection per key (history, buffer) |
+```sql
+-- WINDOW: wrap table in TUMBLE/HOP/SESSION → state resets when window closes
+SELECT zone_id, COUNT(*) FROM TABLE(
+    TUMBLE(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' HOUR)
+) GROUP BY zone_id, window_start, window_end
+
+-- STATE: no wrapper → state accumulates forever
+SELECT zone_id, COUNT(*) FROM rides GROUP BY zone_id
+```
+
+### SQL Pattern → Flink State
+
+Without `TUMBLE`/`HOP`/`SESSION`, Flink keeps state per key:
+
+| SQL Pattern | Underlying State | What's Stored |
+|-------------|------------------|---------------|
+| `COUNT(*)` | ValueState | Running count |
+| `SUM(amount)` | ValueState | Running total |
+| `MAX(fare)` | ReducingState | Highest value seen |
+| `MIN(fare)` | ReducingState | Lowest value seen |
+| `AVG(fare)` | ValueState (2 values) | Sum + count |
+
+### Other Stateful Patterns
+
+| Pattern | Use Case | State Type |
+|---------|----------|------------|
+| **Deduplication** | Ignore duplicate events | ValueState (seen flag) |
+| **Last N items** | Recent history per key | ListState |
+| **Running average** | Smoothed metrics | ValueState (sum + count) |
+| **First seen** | Track when key first appeared | ValueState (timestamp) |
+| **Change detection** | Alert when value differs from previous | ValueState (last value) |
+| **Rate limiting** | Count events per time period | MapState (time → count) |
+
+## Setup
+
+```bash
+make db-setup FILE=exercises/04-state/setup_tables.sql
+```
 
 ## Exercises
 
-### 1. ValueState: Cumulative Trip Counter
+### 1. Cumulative Trip Counter
 
-Count total trips per zone—never resets.
+Count total trips per zone — **never resets**, even across restarts.
 
 ```bash
 make submit-job JOB=exercises/04-state/cumulative_counter.py
-make db-query SQL="SELECT * FROM zone_trip_totals ORDER BY total_trips DESC LIMIT 10;"
 ```
 
-**Solution:** [cumulative_counter.py](cumulative_counter.py)
+Wait 30 seconds, then check:
+```bash
+make db-query SQL="SELECT * FROM zone_trip_totals ORDER BY total_trips DESC LIMIT 5;"
+```
 
-### 2. ReducingState: Max Fare Tracker
+Run the query again a minute later. **Totals keep growing** — that's state, not windows.
 
-Track the highest fare ever seen per zone.
+**Solution:** [cumulative_counter.py](cumulative_counter.py) — `GROUP BY` without a window = unbounded aggregation
+
+---
+
+### 2. Max Fare Tracker
+
+Track the **highest fare ever seen** per zone.
 
 ```bash
 make submit-job JOB=exercises/04-state/max_fare_tracker.py
-make db-query SQL="SELECT * FROM zone_max_fare ORDER BY max_fare DESC LIMIT 10;"
 ```
 
-**Solution:** [max_fare_tracker.py](max_fare_tracker.py)
+Check results:
+```bash
+make db-query SQL="SELECT * FROM zone_max_fare ORDER BY max_fare DESC LIMIT 5;"
+```
 
-### 3. State vs Window Comparison
+The max can only go up. Even if all new rides are cheap, the stored max stays.
 
-Side-by-side: cumulative counter (state) vs hourly counter (window).
+**Solution:** [max_fare_tracker.py](max_fare_tracker.py) — `MAX()` remembers the highest value per key
+
+---
+
+### 3. Rate Limiter
+
+Alert when a zone exceeds 20 rides per minute — a common fraud/abuse detection pattern.
 
 ```bash
-make submit-job JOB=exercises/04-state/state_vs_window.py
+make submit-job JOB=exercises/04-state/rate_limiter.py
 ```
 
-Compare outputs:
-```sql
--- State: total keeps growing
-SELECT zone, total_trips FROM zone_trip_totals WHERE zone = '161';
-
--- Window: resets each hour
-SELECT zone, hourly_trips, window_end FROM zone_hourly_trips 
-WHERE zone = '161' ORDER BY window_end DESC LIMIT 5;
+Check for alerts:
+```bash
+make db-query SQL="SELECT * FROM zone_rate_alerts ORDER BY window_end DESC LIMIT 10;"
 ```
 
-**Solution:** [state_vs_window.py](state_vs_window.py)
+**What you'll see:** Only busy zones appear. Quiet zones never show up.
+
+This is the pattern behind:
+- API rate limiting (>100 requests/min → throttle)
+- Fraud detection (>10 transactions/min → flag)
+- Alerting (>50 errors/min → page oncall)
+
+**Solution:** [rate_limiter.py](rate_limiter.py) — `TUMBLE` + `HAVING` filter
 
 ## Checkpointing
 

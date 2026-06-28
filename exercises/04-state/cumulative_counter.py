@@ -27,7 +27,7 @@ def main():
         )
     """)
 
-    # Upsert sink: state updates overwrite previous values
+    # Create Postgres table if not exists
     t_env.execute_sql("""
         CREATE TABLE zone_trip_totals (
             zone_id INTEGER,
@@ -36,11 +36,11 @@ def main():
             last_updated TIMESTAMP(3),
             PRIMARY KEY (zone_id) NOT ENFORCED
         ) WITH (
-            'connector' = 'upsert-kafka',
-            'properties.bootstrap.servers' = 'redpanda:29092',
-            'topic' = 'zone-totals',
-            'key.format' = 'json',
-            'value.format' = 'json'
+            'connector' = 'jdbc',
+            'url' = 'jdbc:postgresql://postgres:5432/postgres',
+            'table-name' = 'zone_trip_totals',
+            'username' = 'postgres',
+            'password' = 'postgres'
         )
     """)
 

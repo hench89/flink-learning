@@ -1,4 +1,4 @@
-"""ReducingState: Track max fare ever seen per zone."""
+"""Rate limiting: Alert when a zone exceeds N rides per minute."""
 
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.table import EnvironmentSettings, StreamTableEnvironment
@@ -28,29 +28,42 @@ def main():
     """)
 
     t_env.execute_sql("""
-        CREATE TABLE zone_max_fare (
+        CREATE TABLE zone_rate_alerts (
             zone_id INTEGER,
-            max_fare DOUBLE,
-            max_distance DOUBLE,
-            PRIMARY KEY (zone_id) NOT ENFORCED
+            window_start TIMESTAMP(3),
+            window_end TIMESTAMP(3),
+            ride_count BIGINT,
+            PRIMARY KEY (zone_id, window_start) NOT ENFORCED
         ) WITH (
             'connector' = 'jdbc',
             'url' = 'jdbc:postgresql://postgres:5432/postgres',
-            'table-name' = 'zone_max_fare',
+            'table-name' = 'zone_rate_alerts',
             'username' = 'postgres',
             'password' = 'postgres'
         )
     """)
 
-    # MAX() is stateful: Flink remembers highest value per key
+    # ponytail: rate limit = tumbling window + HAVING filter
+    # Only emit when count exceeds threshold (20 rides/minute = busy zone)
     t_env.execute_sql("""
-        INSERT INTO zone_max_fare
+        INSERT INTO zone_rate_alerts
         SELECT
-            PULocationID AS zone_id,
-            MAX(total_amount) AS max_fare,
-            MAX(trip_distance) AS max_distance
-        FROM rides
-        GROUP BY PULocationID
+            zone_id,
+            window_start,
+            window_end,
+            ride_count
+        FROM (
+            SELECT
+                PULocationID AS zone_id,
+                window_start,
+                window_end,
+                COUNT(*) AS ride_count
+            FROM TABLE(
+                TUMBLE(TABLE rides, DESCRIPTOR(event_time), INTERVAL '1' MINUTE)
+            )
+            GROUP BY PULocationID, window_start, window_end
+        )
+        WHERE ride_count > 20
     """)
 
 if __name__ == "__main__":
